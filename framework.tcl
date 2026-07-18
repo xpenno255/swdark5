@@ -76,6 +76,7 @@ proc swd5_shot_graph {contexts x y w h} {
 		set p $::swdark5(chart_pressure)
 		set f $::swdark5(chart_flow)
 		set w $::swdark5(chart_weight)
+		set t $::swdark5(chart_temp)
 
 		$widget element create fill_pressure -xdata espresso_elapsed -ydata espresso_pressure -symbol none -label "" -linewidth 1 -color [swd5_blend $p 0.10] -smooth $sm -pixels 0 -areapattern solid -areaforeground [swd5_blend $p 0.10]
 		$widget element create fill_flow -xdata espresso_elapsed -ydata espresso_flow -symbol none -label "" -linewidth 1 -color [swd5_blend $f 0.10] -smooth $sm -pixels 0 -areapattern solid -areaforeground [swd5_blend $f 0.10]
@@ -87,6 +88,11 @@ proc swd5_shot_graph {contexts x y w h} {
 		$widget element create glow_flow_inner -xdata espresso_elapsed -ydata espresso_flow -symbol none -label "" -linewidth [rescale_x_skin 14] -color [swd5_blend $f 0.45] -smooth $sm -pixels 0
 		$widget element create glow_weight_inner -xdata espresso_elapsed -ydata espresso_flow_weight -symbol none -label "" -linewidth [rescale_x_skin 14] -color [swd5_blend $w 0.45] -smooth $sm -pixels 0
 
+		# temperature on the secondary (y2) axis: glow halo + core + dashed goal
+		$widget element create glow_temp_inner -xdata espresso_elapsed -ydata espresso_temperature_basket -symbol none -label "" -linewidth [rescale_x_skin 14] -color [swd5_blend $t 0.40] -smooth $sm -pixels 0 -mapy y2
+		$widget element create line_temperature_goal -xdata espresso_elapsed -ydata espresso_temperature_goal -symbol none -label "" -linewidth [rescale_x_skin 3] -color $::swdark5(chart_temp_goal) -smooth $sm -pixels 0 -dashes {4 6} -mapy y2
+		$widget element create line_temperature -xdata espresso_elapsed -ydata espresso_temperature_basket -symbol none -label "" -linewidth [rescale_x_skin 6] -color $t -smooth $sm -pixels 0 -mapy y2
+
 		$widget element create line_pressure_goal -xdata espresso_elapsed -ydata espresso_pressure_goal -symbol none -label "" -linewidth [rescale_x_skin 3] -color $::swdark5(chart_pressure_goal) -smooth $sm -pixels 0 -dashes {4 6}
 		$widget element create line_flow_goal -xdata espresso_elapsed -ydata espresso_flow_goal -symbol none -label "" -linewidth [rescale_x_skin 3] -color $::swdark5(chart_flow_goal) -smooth $sm -pixels 0 -dashes {4 6}
 		$widget element create line_state_change -xdata espresso_elapsed -ydata espresso_state_change -label "" -linewidth [rescale_x_skin 3] -color $::swdark5(chart_step) -pixels 0
@@ -94,11 +100,13 @@ proc swd5_shot_graph {contexts x y w h} {
 		$widget element create line_flow -xdata espresso_elapsed -ydata espresso_flow -symbol none -label "" -linewidth [rescale_x_skin 8] -color $f -smooth $sm -pixels 0
 		$widget element create line_flow_weight -xdata espresso_elapsed -ydata espresso_flow_weight -symbol none -label "" -linewidth [rescale_x_skin 8] -color $w -smooth $sm -pixels 0
 
-		# BLT draws the display list first-to-last (bottom-to-top)
-		$widget element show {fill_pressure fill_flow glow_pressure_outer glow_flow_outer glow_weight_outer glow_pressure_inner glow_flow_inner glow_weight_inner line_state_change line_pressure_goal line_flow_goal line_flow_weight line_flow line_pressure}
+		# BLT draws the display list first-to-last (bottom-to-top). Temperature
+		# sits above the fills/glow but below the primary pressure/flow lines.
+		$widget element show {fill_pressure fill_flow glow_pressure_outer glow_flow_outer glow_weight_outer glow_pressure_inner glow_flow_inner glow_weight_inner glow_temp_inner line_state_change line_temperature_goal line_temperature line_pressure_goal line_flow_goal line_flow_weight line_flow line_pressure}
 
 		$widget axis configure x -color $::swdark5(chart_axis) -tickfont Helv_6 -linewidth [rescale_x_skin 1]
 		$widget axis configure y -color $::swdark5(chart_axis) -tickfont Helv_6 -min 0.0 -max [expr {$::de1(max_pressure) + 0.01}] -subdivisions 5 -majorticks {2 4 6 8 10 12} -linewidth [rescale_x_skin 1]
+		$widget axis configure y2 -color $::swdark5(chart_temp) -tickfont Helv_6 -min $::swdark5(temp_axis_min) -max $::swdark5(temp_axis_max) -majorticks {85 90 95} -hide 0 -linewidth [rescale_x_skin 1]
 		catch { $widget grid configure -color $::swdark5(chart_grid) }
 	} -plotbackground $::swdark5(chart_bg) -width [rescale_x_skin $w] -height [rescale_y_skin $h] -borderwidth 0 -background $::swdark5(chart_bg) -plotrelief flat
 }
@@ -108,6 +116,47 @@ proc swd5_chart_legend {contexts x y} {
 	add_de1_text $contexts $x $y -text [translate "pressure"] -font Helv_7 -fill $::swdark5(chart_pressure) -anchor "w"
 	add_de1_text $contexts [expr {$x + 340}] $y -text [translate "flow"] -font Helv_7 -fill $::swdark5(chart_flow) -anchor "w"
 	add_de1_text $contexts [expr {$x + 600}] $y -text [translate "weight"] -font Helv_7 -fill $::swdark5(chart_weight) -anchor "w"
+	add_de1_text $contexts [expr {$x + 900}] $y -text [translate "temp"] -font Helv_7 -fill $::swdark5(chart_temp) -anchor "w"
+}
+
+# ---- scale connection status ------------------------------------------------
+# A tappable indicator: coloured dot + text, driven live by the variable update
+# cycle (the textvariable script updates the dot colour as a side effect).
+# Green = connected, amber = paired-but-off, grey = no scale. Tapping a
+# paired-but-off scale triggers a reconnect; with no scale it opens settings.
+proc swd5_scale_status_text {} {
+	set connected [expr {[info exists ::de1(scale_device_handle)] && $::de1(scale_device_handle) != 0}]
+	set paired [expr {[ifexists ::settings(scale_bluetooth_address)] ne ""}]
+	if {$connected} {
+		set col $::swdark5(chart_pressure)
+		set txt [translate "scale ready"]
+	} elseif {$paired} {
+		set col $::swdark5(chart_temp)
+		set txt [translate "tap to connect"]
+	} else {
+		set col $::swdark5(text_muted)
+		set txt [translate "no scale"]
+	}
+	foreach tag [ifexists ::swd5_scale_dots] {
+		catch { .can itemconfigure $tag -fill $col -outline $col }
+	}
+	return $txt
+}
+
+proc swd5_scale_tap {} {
+	say "" $::settings(sound_button_in)
+	if {[ifexists ::settings(scale_bluetooth_address)] ne ""} {
+		catch { ble_connect_to_scale }
+	} else {
+		show_settings
+	}
+}
+
+# Place the scale status indicator on a page at (x,y), left-anchored.
+proc swd5_scale_status {contexts x y} {
+	lappend ::swd5_scale_dots [swd5_dot $contexts [expr {$x + 20}] [expr {$y + 4}] 14 $::swdark5(text_muted)]
+	add_de1_variable $contexts [expr {$x + 70}] $y -font Helv_8_bold -fill $::swdark5(text_muted) -anchor "w" -textvariable {[swd5_scale_status_text]}
+	add_de1_button $contexts {swd5_scale_tap} [expr {$x - 20}] [expr {$y - 60}] [expr {$x + 520}] [expr {$y + 70}]
 }
 
 # Small coloured dot.

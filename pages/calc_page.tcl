@@ -11,6 +11,7 @@ set blue  $::swdark5(chart_flow)
 # ---- top bar -------------------------------------------------------------------
 add_de1_text "swd5_calc" 80 90 -text [translate "shot calculator"] -font Helv_9_bold -fill $txt -anchor "w"
 add_de1_variable "swd5_calc" 460 90 -font Helv_9 -fill $muted -anchor "w" -textvariable {$::settings(profile_title)}
+swd5_scale_status "swd5_calc" 1500 90
 add_de1_variable "swd5_calc" 2480 90 -font Helv_9_bold -fill $muted -anchor "e" -textvariable {[clock format [clock seconds] -format {%H:%M}]}
 
 # ---- left: target metrics, centred ------------------------------------------------

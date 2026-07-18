@@ -22,6 +22,7 @@ dui page add "swd5_calc" -bg_color $bg -theme none
 # ---- top bar ------------------------------------------------------------------
 add_de1_text "off" 80 90 -text "SWDark5" -font Helv_9_bold -fill $txt -anchor "w"
 add_de1_variable "off" 320 90 -font Helv_9 -fill $muted -anchor "w" -textvariable {$::settings(profile_title)}
+swd5_scale_status "off" 1500 90
 add_de1_variable "off" 2480 90 -font Helv_9_bold -fill $muted -anchor "e" -textvariable {[clock format [clock seconds] -format {%H:%M}]}
 
 # ---- hero: last shot chart -----------------------------------------------------

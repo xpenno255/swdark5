@@ -33,3 +33,9 @@ set ::swdark5(chart_pressure_goal) "#B5DD8B"
 set ::swdark5(chart_flow)          "#43B1E3"
 set ::swdark5(chart_flow_goal)     "#87C6E3"
 set ::swdark5(chart_weight)        "#C9A15E"
+set ::swdark5(chart_temp)          "#E8734D"
+set ::swdark5(chart_temp_goal)     "#F0A487"
+# temperature uses its own y2 axis band (°C), since it lives far above the
+# 0-12 pressure/flow range and would otherwise be off-screen.
+set ::swdark5(temp_axis_min)       80
+set ::swdark5(temp_axis_max)       100
