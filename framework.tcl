@@ -148,7 +148,8 @@ proc swd5_scale_tap {} {
 	if {[ifexists ::settings(scale_bluetooth_address)] ne ""} {
 		catch { ble_connect_to_scale }
 	} else {
-		show_settings
+		# no scale paired: jump straight to the APP settings tab (scale pairing)
+		show_settings settings_4
 	}
 }
 

@@ -71,4 +71,4 @@ add_de1_button "swd5_setts" {say "" $::settings(sound_button_in); swd5_toggle_ca
 # ---- bottom row --------------------------------------------------------------------
 swd5_pill "swd5_setts" 180 1420 540 1540 [translate "done"] {swd5_setts_back}
 swd5_pill "swd5_setts" 580 1420 1040 1540 [translate "app settings"] \
-	{say [translate {settings}] $::settings(sound_button_in); show_settings}
+	{say [translate {settings}] $::settings(sound_button_in); show_settings settings_4}
